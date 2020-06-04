@@ -7,17 +7,18 @@ const App = () => {
     const [loading, setLoading] = useState(true)
 
     const getStoriesIds = async () => {
-        return await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')
+        const storiesIds = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+        return storiesIds.json()
     };
-    const getNewsWithAuthor = async (id) => new Promise(async (resolve, reject) => {
+    const getStoriesWithAuthor = async (id) => new Promise(async (resolve, reject) => {
         try{
-            const news = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
-            news.json()
-                .then(async ({by:authorID, title, score, url})=>{
-                    const author = await fetch(`https://hacker-news.firebaseio.com/v0/user/${authorID}.json`);
-                    author.json()
-                        .then(({karma: authorKarma})=>resolve({authorID, authorKarma, title, score, url}))
-            })
+            const news = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
+            const {by:authorID, title, score, url} = await news.json();
+
+            const author = await fetch(`https://hacker-news.firebaseio.com/v0/user/${authorID}.json`);
+            const {karma: authorKarma} = await author.json();
+
+            resolve({authorID, authorKarma, title, score, url})
         }catch(e){
             reject('Can not fetch ether news or author info')
         }
@@ -26,12 +27,11 @@ const App = () => {
 
     useEffect(()=>{
         getStoriesIds()
-            .then(response => response.json())
             .then(ids=>{
                 // here we've got 10 random ids
                 const topTenIds = shuffle(ids).slice(0, 10);
-                const newsPromises = topTenIds.map(id => getNewsWithAuthor(id))
-                Promise.all(newsPromises).then(stories => {
+                const storiesPromises = topTenIds.map(id => getStoriesWithAuthor(id))
+                Promise.all(storiesPromises).then(stories => {
                     //once we've got info for ALL news put them into the state
                     setStoriesData(stories.sort((a,b)=>a.score-b.score));
                     setLoading(false)
